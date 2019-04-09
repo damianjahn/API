@@ -2,17 +2,49 @@ const express = require('express')
 const router = express.Router()
 const mongoose = require('mongoose')
 const Product = require('../models/product')
+const multer = require('multer')
+const upload = multer({dest: 'uploads'})
 
 router.get('./products')
 
 router.get('/', (req, res, next) => {
-    res.status(200).json({
-        message: 'get method from product'
-    })
+   Product.find()
+   .select('name price _id')
+   .exec()
+   .then(docs => {
+       console.log(docs)
+       if (docs.length >= 1){
+            const response = {
+                count: docs.length,
+                products: docs.map(doc => {
+                    return{
+                        nazwa: doc.name,
+                        cena: doc.price,
+                        id: doc._id,
+                        request: {
+                            type: 'GET',
+                            url: 'http://localhost:5000/products' + doc._id
+                        }
+                    }
+                })
+            }
+            res.status(200).json(response)
+            } else {
+                res.status(404).json({
+                    message: "No products"
+                })
+            }
+   })
+   .catch(err => {
+       console.log(err)
+       res.status(500).json({
+           error: err
+       })
+   })
 })
 
-router.post('/', (req, res, next) => {
-   
+router.post('/', upload.single('productImage'), (req, res, next) => {
+   console.log(req.file)
     const product = new Product({
         _id: new mongoose.Types.ObjectId(),
         name: req.body.name,
@@ -20,13 +52,19 @@ router.post('/', (req, res, next) => {
     })
     product.save().then(result => {
         console.log(result)
+        res.status(200).json({
+            message: 'Product added',
+            createdProduct: result
+        })
     })
-    .catch(err => console.log(err))
+    .catch(err => {
+        console.log(err)
+        res.status(500).json({
+            error: err
+        })
+    })
 
-    res.status(200).json({
-        message: 'Product added',
-        createdProduct: product
-    })
+    
 })
 
 router.get('/:productId', (req, res, next) => {
@@ -34,8 +72,14 @@ router.get('/:productId', (req, res, next) => {
     Product.findById(id)
     .exec()
     .then(doc => {
-        console.log(doc)
+        console.log("Z bazy" + doc)
+        if(doc) {
         res.status(200).json(doc)
+        } else {
+            res.status(404).json({
+                message: 'ID is not correct'
+            })
+        }
     })
     .catch(err => {
         console.log(err)
@@ -44,15 +88,38 @@ router.get('/:productId', (req, res, next) => {
 })
 
 router.patch('/:productId', (req, res, next) => {
-    res.status(200).json({
-        message:'Your product is changed'
+    const id = req.params.productId
+    Product.update({_id: id}, {$set: {
+        name: req.body.name,
+        price: req.body.price
+    }})
+    .exec()
+    .then(result => {
+        console.log(result)
+        res.status(200).json(result)
     })
+    .catch(err => {
+        console.log(err)
+        res.status(500).json({
+            error: err
+        })
+    })
+ })
 
-})
+
 
 router.delete('/:productId', (req, res, next) => {
-    res.status(200).json({
-        message:'Your product is deleted'
+    const id = req.params.productId
+    Product.remove({_id: id})
+    .exec()
+    .then(result => {
+        res.status(200).json(result)
+    })
+    .catch(err => {
+        console.log(err)
+        res.status(500).json({
+            error: err
+        })
     })
 
 })
