@@ -1,5 +1,6 @@
 {
     "env": {
-        "MONGO_ATLAS_PW" : "qwerty12"
+        "MONGO_ATLAS_PW" : "qwerty12",
+        "JWT_SECRET": "pigpgipegj"
     }
 }
